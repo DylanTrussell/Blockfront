@@ -1,0 +1,40 @@
+from pathlib import Path
+p=Path('app/page.tsx');s=p.read_text()
+s=s.replace("import { Tabs, TabsList, TabsTrigger }", "import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';\nimport { WEAPONS, SELECTABLE, RULE_LABELS, VARIANTS, allowedWeapon, startingInventory, type Variant } from '@/lib/weapons';\nimport { Tabs, TabsList, TabsTrigger }")
+s=s.replace("const weapons = ['AK-47', 'M16 / M203', 'M60', 'M2 .50 CAL', 'RPG-7', 'M1 BAZOOKA'];", "const descriptions:Record<number,string>={0:'7.62 assault rifle. Reliable, punchy, unmistakable.',1:'5.56 rifle with an underbarrel grenade launcher.',2:'Belt-fed support. Keep their heads down.',4:'A direct hit is lethal. Watch the splash.',5:'American shoulder-fired rocket launcher.',6:'A heavy-hitting .45 sidearm.',7:'Bolt-action precision. Right-click to use the scope.',8:'Heavy semi-automatic sniper. Aim for the head.',9:'High-capacity 9mm sidearm.'};")
+s=s.replace("const configRef=useRef({map,mode:mode as 'solo'|'online'|'split',weapon});configRef.current={map,mode:mode as 'solo'|'online'|'split',weapon};", "const [variant,setVariant]=useState<Variant>('standard');\n  const rules={variant},inventory=startingInventory(rules,weapon);\n  const changeVariant=(value:Variant)=>{setVariant(value);if(!allowedWeapon(weapon,{variant:value}))setWeapon(startingInventory({variant:value}).find((id):id is number=>id!==null)!);};\n  const configRef=useRef({map,mode:mode as 'solo'|'online'|'split',weapon,variant});configRef.current={map,mode:mode as 'solo'|'online'|'split',weapon,variant};")
+s=s.replace("setWeapon(c.weapon);configRef.current=c;", "setWeapon(c.weapon);setVariant(c.variant);configRef.current=c;")
+s=s.replace("PLAYABLE ALPHA · 01", "COMBAT UPDATE · 03")
+s=s.replace("engine.current?.start('online',weapon,code)","engine.current?.start('online',weapon,code,rules)")
+s=s.replace("engine.current?.start(mode,weapon)","engine.current?.start(mode,weapon,'',rules)")
+start=s.index('    <section className="loadout">');end=s.index('\n    <footer',start)
+s=s[:start]+'''    <section className="loadout"><div className="loadout-title"><label htmlFor="match-rules">MATCH RULES</label><span>{mode==='online'?'HOST SETS THE RULES':'CUSTOM GAME'}</span></div>
+      <Select value={variant} onValueChange={v=>{if(v)changeVariant(v as Variant);}}><SelectTrigger id="match-rules" className="rules-select"><SelectValue>{RULE_LABELS[variant]}</SelectValue></SelectTrigger><SelectContent>{VARIANTS.map(v=><SelectItem key={v} value={v}>{RULE_LABELS[v]}</SelectItem>)}</SelectContent></Select>
+      <div className="loadout-title" style={{marginTop:18}}><span>CHOOSE YOUR STARTING WEAPON</span><Crosshair size={15}/></div><div className="weapons">{SELECTABLE.filter(i=>allowedWeapon(i,rules)).map(i=><button key={i} className={`weapon-button ${weapon===i?'selected':''}`} onClick={()=>setWeapon(i)}>{WEAPONS[i].name}</button>)}</div><p className="weapon-detail">{descriptions[weapon]}</p>
+      <div className="starting-slots">{inventory.map((id,i)=><span key={i}><small>{['PRIMARY','SIDEARM','LAUNCHER'][i]}</small><b>{id===null?'DISABLED':WEAPONS[id].name}</b></span>)}</div>
+      <div className="mini-stats"><span><b>100</b> HEALTH</span><span><b>50</b> TO WIN</span><span><b>6:00</b> MATCH</span></div></section>'''+s[end:]
+s=s.replace("['Change weapon','1–5 / WHEEL']", "['Weapon slots','1–3 / WHEEL'],['Pick up / swap weapon','X']")
+s=s.replace("['P2 jump / turret','P / Y']", "['P2 jump / turret','P / Y'],['P2 pickup / cycle','B / BACKSLASH']")
+s=s.replace('Pick up green patch kits', 'Carry a primary, a sidearm, and a launcher in Standard games. Press X near a weapon to replace its matching slot. Room rules apply to all players, bots, pickups, and mounted guns. Pick up green patch kits')
+p.write_text(s)
+p=Path('lib/webmcp.ts');s=p.read_text();s="import { SELECTABLE, VARIANTS, allowedWeapon, type Variant } from './weapons';\n"+s
+s=s.replace('weapon:number};','weapon:number;variant:Variant};')
+s=s.replace('mode and starting weapon.','mode, room rules and starting weapon.')
+s=s.replace("weapon:{type:'integer',enum:[0,1,2,4,5]}","weapon:{type:'integer',enum:SELECTABLE},variant:{type:'string',enum:VARIANTS}")
+s=s.replace("['map','mode','weapon']","['map','mode','weapon','variant']")
+s=s.replace("![0,1,2,4,5].includes(c.weapon)","!SELECTABLE.includes(c.weapon)||!VARIANTS.includes(c.variant)||!allowedWeapon(c.weapon,{variant:c.variant})")
+p.write_text(s)
+p=Path('app/hud.tsx');s=p.read_text()
+s=s.replace("import { createWorld, distance }", "import { createWorld, distance, v, wallDistance }")
+s=s.replace("import { WEAPONS } from '@/lib/simulation';","import { WEAPONS, RULE_LABELS, allowedWeapon, hitFeedback } from '@/lib/weapons';")
+s=s.replace("const car=state.vehicles.find(c=>!c.dead", "const car=state.vehicles.find(c=>(!c.fixed||allowedWeapon(3,state.rules))&&!c.dead")
+s=s.replace("const injured=a.limbs.some(p=>!p);return", "const injured=a.limbs.some(p=>!p);const feedback=hitFeedback(a,state.time);const scoped=a.dead>0?!!(replay?.ads&&WEAPONS[replay.weapon??0]?.sniper):a.ads&&WEAPONS[wi].sniper;const pickup=state.pickups.filter(p=>p.cooldown<=0&&distance(a.pos,p.pos)<2.1).sort((p,q)=>distance(a.pos,p.pos)-distance(a.pos,q.pos)).find(p=>{const eye=v(a.pos.x,a.pos.y+1.68,a.pos.z),d=distance(eye,p.pos);return wallDistance(world,eye,v((p.pos.x-eye.x)/d,(p.pos.y-eye.y)/d,(p.pos.z-eye.z)/d))>d-.1;});return")
+s=s.replace("{world.name.toUpperCase()}{hud.room.code", "{world.name.toUpperCase()}<small className=\"hud-variant\">{RULE_LABELS[state.rules.variant]}</small>{hud.room.code")
+s=s.replace('{a.dead<=0&&<div className="crosshair"/>}', '{scoped&&<div className="scope-overlay"><div className="scope-lens"><i/><b/><span>RANGE / m</span></div></div>}{a.dead<=0&&!scoped&&<div className="crosshair"/>}')
+s=s.replace("style={{opacity:a.dead>0?0:Math.max(0,.75-(state.time-a.lastHit)*1.5)+(a.hp<30?.15:0)}}/>", "style={{opacity:a.dead>0?0:Math.max(feedback.opacity,feedback.lowHealth?.2:0)}}/>\n      {a.dead<=0&&feedback.opacity>0&&<div className=\"damage-direction\" style={{opacity:feedback.opacity,transform:`translate(-50%,-50%) rotate(${feedback.angle}deg)`}}><i/></div>}")
+s=s.replace("      {a.dead<=0&&((a.vehicle)||car)", "      {a.dead<=0&&<div className=\"inventory-bar\">{a.inventory.map((id,slot)=><button key={slot} disabled={id===null||!!a.vehicle} className={wi===id?'active':''} onClick={()=>{if(id!==null&&!index)engine.touch.weapon=id;}}><small>{slot+1} · {['PRIMARY','SIDEARM','LAUNCHER'][slot]}</small><b>{id===null?'DISABLED':WEAPONS[id].name}</b></button>)}</div>}\n      {a.dead<=0&&pickup&&!a.vehicle&&<div className=\"interaction pickup-prompt\"><kbd>{index?'B':'X'}</kbd> PICK UP {WEAPONS[pickup.weapon].name}<small>{a.inventory[WEAPONS[pickup.weapon].slot]===null?'Fill':'Replace'} {['primary','sidearm','launcher'][WEAPONS[pickup.weapon].slot]} slot</small></div>}\n      {a.dead<=0&&!pickup&&((a.vehicle)||car)")
+s=s.replace("`Drive Humvee · ${index?'Y':'F'} gunner`", "`Drive Humvee${allowedWeapon(3,state.rules)?` · ${index?'Y':'F'} gunner`:''}`")
+s=s.replace('R reload · 1–5 weapons · Q patch', 'R reload · 1–3 slots · X pickup · Q patch')
+s=s.replace("      <button className=\"fire\"", "      <button style={{right:190,bottom:175}} onClick={()=>engine.touch.pickup=true}>SWAP</button><button style={{right:32,bottom:245}} onClick={()=>engine.touch.ads=!engine.touch.ads}>AIM</button>\n      <button className=\"fire\"")
+s=s.replace("      {hud.room.code&&<>", "      <p className=\"pause-rules\">{RULE_LABELS[state.rules.variant]} · Three equipment slots<br/>1–3 select · X pick up / swap</p>\n      {hud.room.code&&<>")
+p.write_text(s)

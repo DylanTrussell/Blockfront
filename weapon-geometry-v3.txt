@@ -1,0 +1,56 @@
+export function weaponModel(index: number, firstPerson = false): T.Group {
+  const g = new T.Group(), w=WEAPONS[index], steel=0x4f5a60, dark=0x222b30, highlight=0x88969b, wood=0x985824;
+  const muzzle=w.muzzle;
+  if(w.rocket){
+    const tube=cyl(g,0,.03,-.32,.115,1.18,index===4?0x708341:0x577457);tube.rotation.x=Math.PI/2;
+    const nose=cyl(g,0,.03,-.99,index===4?.155:.12,.22,dark);nose.rotation.x=Math.PI/2;
+    cyl(g,0,.03,.28,.15,.1,highlight).rotation.x=Math.PI/2;
+    box(g,0,-.18,-.1,.11,.3,.14,wood);box(g,.14,.18,-.3,.07,.18,.17,steel);
+    for(const z of [-.3,-.1,.1])cyl(g,0,.03,z,.13,.06,wood).rotation.x=Math.PI/2;
+  }else if(w.slot===1){
+    box(g,0,.055,-.25,.145,.15,.46,index===6?highlight:steel);
+    box(g,0,-.045,-.22,.12,.07,.37,dark);
+    box(g,0,-.17,-.1,.12,.3,.15,index===6?wood:dark).rotation.x=-.2;
+    cyl(g,0,.04,-.46,.035,.07,dark).rotation.x=Math.PI/2;
+    box(g,0,.15,-.43,.026,.055,.035,dark);box(g,0,.14,-.07,.09,.04,.045,dark);
+    box(g,.07,-.075,-.22,.025,.12,.12,steel);
+  }else{
+    box(g,0,.03,-.25,.18,.18,.48,steel);
+    box(g,0,.02,.09,.17,.17,.32,index===0?wood:dark);
+    box(g,0,-.17,-.08,.10,.24,.13,dark).rotation.x=-.2;
+    box(g,0,-.16,-.34,index===2?.29:.105,.28,.15,index===0?dark:0x606949).rotation.x=index===0?-.25:.08;
+    box(g,0,.04,-.55,.18,.17,.33,index===0?wood:dark);
+    const start=-.6,end=muzzle.z,barrel=cyl(g,0,.04,(start+end)/2,.037,start-end,steel);barrel.rotation.x=Math.PI/2;
+    cyl(g,0,.04,muzzle.z+.04,.05,.08,dark).rotation.x=Math.PI/2;
+    box(g,0,.16,-.35,.14,.04,.5,highlight);
+    if(w.sniper){
+      cyl(g,0,.265,-.39,.075,.46,dark).rotation.x=Math.PI/2;
+      for(const z of [-.63,-.14])cyl(g,0,.265,z,.095,.07,steel).rotation.x=Math.PI/2;
+      cyl(g,0,.265,-.678,.074,.013,0x64bac8).rotation.x=Math.PI/2;
+      for(const x of [-.1,.1])box(g,x,-.10,-.78,.035,.29,.04,highlight).rotation.z=x*4;
+      if(index===8)box(g,0,.04,-1.39,.16,.12,.15,dark);
+    }else{box(g,0,.19,-.6,.035,.16,.035,highlight);box(g,0,.17,-.16,.10,.06,.1,dark);}
+    if(index===1){cyl(g,0,-.1,-.65,.075,.42,0x42523b).rotation.x=Math.PI/2;}
+    if(index===2||index===3){box(g,.2,-.1,-.2,.24,.28,.32,0x82794b);for(let j=0;j<6;j++)box(g,.14+j*.028,-.04,-.18,.02,.06,.13,0xc3a358);}
+  }
+  const socket=new T.Group();socket.name='muzzle';socket.position.set(muzzle.x,muzzle.y,muzzle.z);g.add(socket);
+  const flash=new T.Group();flash.name='muzzleFlash';socket.add(flash);flash.visible=false;
+  const coreMat=new T.MeshBasicMaterial({color:0xffefb0,transparent:true,opacity:.95,blending:T.AdditiveBlending,depthWrite:false});coreMat.userData.owned=true;
+  const flameMat=new T.MeshBasicMaterial({color:0xffa12d,transparent:true,opacity:.85,blending:T.AdditiveBlending,depthWrite:false});flameMat.userData.owned=true;
+  const core=new T.Mesh(new T.SphereGeometry(.10,8,6),coreMat);core.scale.set(.75,.75,2.2);core.position.z=-.10;flash.add(core);
+  for(let n=0;n<5;n++){const flame=new T.Mesh(new T.ConeGeometry(.075,.34,4),flameMat);flame.rotation.x=-Math.PI/2;flame.position.set(Math.cos(n*1.257)*.065,Math.sin(n*1.257)*.065,-.15);flame.rotation.z=n*1.257;flash.add(flame);}
+  if(firstPerson){
+    const right=new T.Group();right.name='rightHand';g.add(right);cyl(right,.1,-.22,-.02,.1,.18,0xf5c737).rotation.x=1.4;box(right,.18,-.34,.15,.24,.25,.45,0x65744c);
+    if(w.slot!==1){const left=new T.Group();left.name='leftHand';g.add(left);cyl(left,-.10,-.17,-.53,.1,.16,0xf5c737).rotation.z=1.1;box(left,-.23,-.27,-.31,.22,.25,.5,0x65744c).rotation.y=-.45;}
+    const copies=new Map<T.Material,T.Material>();g.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=false;o.receiveShadow=false;o.renderOrder=1000;const original=o.material as T.Material;let copy=copies.get(original);if(!copy){copy=original.clone();copy.depthTest=false;copy.depthWrite=false;copy.userData.owned=true;if('fog' in copy)copy.fog=false;copies.set(original,copy);}o.material=copy;}});
+  }
+  return g;
+}
+export function setMuzzleFlash(model:T.Object3D,firing:number,time:number){const flash=model.getObjectByName('muzzleFlash');if(flash){flash.visible=firing>0;flash.scale.setScalar(.7+Math.min(1,firing/.105)*.6);flash.rotation.z=Math.floor(time*80)*1.3;}}
+export function updateSoldier(model:T.Group,a:Actor){
+  model.visible=a.dead<=0&&!a.vehicle;model.position.set(a.pos.x,a.pos.y+(!a.limbs[2]&&!a.limbs[3]?-.6:0),a.pos.z);model.rotation.set(0,a.yaw,0);
+  const rig=model.getObjectByName('weaponRig')!;
+  if(model.userData.weapon!==a.weapon){for(const child of [...rig.children]){releaseGeometry(child);rig.remove(child);}rig.add(weaponModel(a.weapon));model.userData.weapon=a.weapon;}
+  rig.rotation.x=a.pitch;setMuzzleFlash(rig,a.firing,a.walk);
+  for(const [idx,name] of ['leftArm','rightArm','leftLeg','rightLeg'].entries()){const limb=model.getObjectByName(name)!;limb.visible=a.limbs[idx];limb.rotation.x=idx>=2?Math.sin(a.walk*2.2+(idx%2?Math.PI:0))*.35:1.03+a.pitch*.5;limb.rotation.z=idx===0?.60:idx===1?-.15:0;}
+}
